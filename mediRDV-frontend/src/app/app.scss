@@ -1,0 +1,253 @@
+:host {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.75rem;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+}
+
+.brand-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.brand-meta strong {
+  font-size: 1rem;
+}
+
+.brand-meta span {
+  color: var(--subtext);
+  font-size: 0.88rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text);
+  transition: background 0.2s ease;
+}
+
+.button.accent {
+  background: var(--button-bg);
+  color: var(--button-text);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.18);
+}
+
+.button.secondary {
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: transparent;
+}
+
+.button.logout {
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.14);
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: calc(100vh - 74px);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.app-sidebar {
+  background: var(--panel-bg);
+  padding: 2rem 1.25rem;
+  border-right: 1px solid var(--panel-border);
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 2rem;
+}
+
+.sidebar-group {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.sidebar-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.15em;
+}
+
+.sidebar-nav a,
+.sidebar-nav .disabled {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+  background: rgba(37, 99, 235, 0.14);
+  color: white;
+}
+
+.sidebar-nav .disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.app-shell {
+  flex: 1;
+  padding: 2rem;
+  overflow: auto;
+}
+
+.app-footer {
+  padding: 1.25rem 2rem;
+  border-top: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--subtext);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.card,
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+}
+
+.card {
+  padding: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 2.5vw, 2.75rem);
+}
+
+.section-header p {
+  margin: 0;
+  color: var(--subtext);
+  max-width: 40rem;
+}
+
+.grid-columns {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status-chip.success { background: rgba(52, 211, 153, 0.14); color: #dcfce7; }
+.status-chip.warning { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+.status-chip.info { background: rgba(56, 189, 248, 0.15); color: #7dd3fc; }
+.status-chip.danger { background: rgba(248, 113, 113, 0.16); color: #fecaca; }
+
+@media (max-width: 1080px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  }
+}
+
+@media (max-width: 720px) {
+  .app-header,
+  .app-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-shell {
+    padding: 1.25rem;
+  }
+}
