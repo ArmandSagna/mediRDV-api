@@ -117,6 +117,13 @@ const doctors: Doctor[] = [
             <input id="patientPhone" type="text" [value]="patientPhone()" (input)="patientPhone.set($any($event.target).value)" placeholder="+221 77 000 00 00" />
           </div>
 
+          <div class="control-group" *ngIf="selectedTime()">
+            <label for="patientEmail">E-mail</label>
+            <input id="patientEmail" type="email" [value]="patientEmail()" (input)="patientEmail.set($any($event.target).value)" placeholder="exemple@domaine.com" />
+          </div>
+
+          <p class="field-error" *ngIf="patientError()">{{ patientError() }}</p>
+
           <div class="summary-card" *ngIf="canConfirm() && !confirmed()">
             <h2>Récapitulatif</h2>
             <p><strong>Spécialité :</strong> {{ selectedSpecialty() }}</p>
@@ -377,6 +384,12 @@ const doctors: Doctor[] = [
       font-weight: 700;
     }
 
+    .field-error {
+      color: #b91c1c;
+      margin: 0.5rem 0 0;
+      font-size: 0.95rem;
+    }
+
     .alert-title {
       margin: 0 0 0.65rem;
       font-size: 1.05rem;
@@ -409,9 +422,11 @@ export class BookingComponent {
   protected readonly confirmed = signal(false);
   protected readonly isLoading = signal(false);
   protected readonly errorMessage = signal('');
+  protected readonly patientError = signal('');
   protected readonly patientId = signal<number | null>(null);
   protected readonly patientName = signal('');
   protected readonly patientPhone = signal('');
+  protected readonly patientEmail = signal('');
 
   protected readonly availableDoctors = computed(() => {
     const specialty = this.selectedSpecialty();
@@ -452,6 +467,11 @@ export class BookingComponent {
     this.selectedDoctor.set(null);
     this.selectedDate.set('');
     this.selectedTime.set('');
+    this.patientId.set(null);
+    this.patientName.set('');
+    this.patientPhone.set('');
+    this.patientEmail.set('');
+    this.patientError.set('');
     this.step.set(value ? 2 : 1);
     this.confirmed.set(false);
     this.errorMessage.set('');
@@ -461,6 +481,11 @@ export class BookingComponent {
     this.selectedDoctor.set(id);
     this.selectedDate.set('');
     this.selectedTime.set('');
+    this.patientId.set(null);
+    this.patientName.set('');
+    this.patientPhone.set('');
+    this.patientEmail.set('');
+    this.patientError.set('');
     this.step.set(3);
     this.confirmed.set(false);
     this.errorMessage.set('');
@@ -472,6 +497,11 @@ export class BookingComponent {
       this.step.set(4);
     }
     this.selectedTime.set('');
+    this.patientId.set(null);
+    this.patientName.set('');
+    this.patientPhone.set('');
+    this.patientEmail.set('');
+    this.patientError.set('');
     this.confirmed.set(false);
   }
 
@@ -479,19 +509,52 @@ export class BookingComponent {
     this.selectedTime.set(value);
     this.confirmed.set(false);
     this.errorMessage.set('');
+    this.patientError.set('');
   }
 
   protected canConfirm() {
     return !!this.selectedSpecialty() && !!this.selectedDoctor() && !!this.selectedDate() && !!this.selectedTime() && (!!this.patientId() || !!this.patientName());
   }
 
+  protected validatePatientData() {
+    this.patientError.set('');
+
+    if (!this.patientId()) {
+      const name = this.patientName().trim();
+      if (!name) {
+        this.patientError.set('Le nom du patient est requis.');
+        return false;
+      }
+
+      const phone = this.patientPhone().trim();
+      const email = this.patientEmail().trim();
+      if (!phone && !email) {
+        this.patientError.set('Au moins un contact (téléphone ou e-mail) est requis.');
+        return false;
+      }
+
+      if (phone && !/^[0-9+()\s.-]{7,25}$/.test(phone)) {
+        this.patientError.set('Le numéro de téléphone n’est pas valide.');
+        return false;
+      }
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        this.patientError.set('L’adresse e-mail n’est pas valide.');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   protected async confirmBooking() {
-    if (!this.canConfirm()) {
+    if (!this.canConfirm() || !this.validatePatientData()) {
       return;
     }
 
     this.isLoading.set(true);
     this.errorMessage.set('');
+    this.patientError.set('');
 
     try {
       let pid = this.patientId();
@@ -500,6 +563,7 @@ export class BookingComponent {
         const resp = await this.api.createPatient({
           name: this.patientName(),
           phone: this.patientPhone() || null,
+          email: this.patientEmail() || null,
         });
         pid = resp?.data?.id ?? null;
         this.patientId.set(pid);
@@ -529,6 +593,11 @@ export class BookingComponent {
     this.selectedDoctor.set(null);
     this.selectedDate.set('');
     this.selectedTime.set('');
+    this.patientId.set(null);
+    this.patientName.set('');
+    this.patientPhone.set('');
+    this.patientEmail.set('');
+    this.patientError.set('');
     this.step.set(1);
     this.confirmed.set(false);
     this.errorMessage.set('');

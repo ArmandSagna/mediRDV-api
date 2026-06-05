@@ -18,3 +18,4 @@ Route::middleware('auth')->group(function () {
     // Point API pour récupérer les statistiques du dashboard
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 });
+Route::apiResource('appointments', AppointmentController::class)->only(['index', 'store']);

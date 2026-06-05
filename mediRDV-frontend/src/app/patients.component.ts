@@ -1,18 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-
-interface PatientProfile {
-  id: number;
-  name: string;
-  age: number;
-  lastVisit: string;
-  status: string;
-  location: string;
-  assignedDoctor: string;
-  nextAppointment: string;
-}
+import { PatientProfile, PatientService } from './patient.service';
 
 @Component({
   selector: 'app-patients',
@@ -42,9 +32,43 @@ interface PatientProfile {
           <span>{{ filteredPatients.length }}</span>
           patients correspondants
         </div>
+
+        <button class="button accent" type="button" (click)="toggleAddPatient()">
+          {{ showAddForm ? 'Annuler' : 'Nouveau patient' }}
+        </button>
       </div>
 
-      <div class="summary-grid">
+      <section class="add-patient-form card" *ngIf="showAddForm">
+        <h2>Ajouter un patient</h2>
+        <div class="form-grid">
+          <label>
+            Nom
+            <input type="text" [(ngModel)]="newPatient.name" placeholder="Nom complet" />
+          </label>
+          <label>
+            Email
+            <input type="email" [(ngModel)]="newPatient.email" placeholder="email@example.com" />
+          </label>
+          <label>
+            Téléphone
+            <input type="text" [(ngModel)]="newPatient.phone" placeholder="+221 77 000 00 00" />
+          </label>
+          <label>
+            Localisation
+            <input type="text" [(ngModel)]="newPatient.location" placeholder="Dakar" />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="button accent" type="button" (click)="addPatient()">Créer</button>
+          <button class="button outline" type="button" (click)="toggleAddPatient()">Annuler</button>
+        </div>
+      </section>
+
+      <div class="empty-state" *ngIf="loading">
+        Chargement des patients...
+      </div>
+
+      <div class="summary-grid" *ngIf="!loading">
         <article class="summary-card">
           <p>Total patients</p>
           <strong>{{ patients.length }}</strong>
@@ -59,7 +83,7 @@ interface PatientProfile {
         </article>
       </div>
 
-      <div class="grid-columns">
+      <div class="grid-columns" *ngIf="!loading">
         <article class="patient-card" *ngFor="let patient of filteredPatients">
           <header>
             <div>
@@ -87,16 +111,18 @@ interface PatientProfile {
           <footer class="card-actions">
             <button class="button outline" type="button" (click)="viewPatient(patient)">Voir</button>
             <button class="button accent" type="button" (click)="bookPatient(patient)">Prendre RDV</button>
+            <button class="button outline danger" type="button" (click)="deletePatient(patient)">Supprimer</button>
           </footer>
         </article>
       </div>
 
-      <div class="empty-state" *ngIf="filteredPatients.length === 0">
+      <div class="empty-state" *ngIf="!loading && filteredPatients.length === 0">
         Aucun patient trouvé. Ajustez la recherche ou le filtre de statut.
       </div>
     </section>
   `,
-  styles: [`
+  styles: [
+    `
     .patients-panel {
       padding: 2rem 1.5rem 3rem;
     }
@@ -270,6 +296,11 @@ interface PatientProfile {
       border-color: rgba(148, 163, 184, 0.35);
     }
 
+    .button.outline.danger {
+      border-color: rgba(248, 113, 113, 0.35);
+      color: #b91c1c;
+    }
+
     .button.accent {
       background: var(--primary);
       color: white;
@@ -302,6 +333,41 @@ interface PatientProfile {
       text-align: center;
     }
 
+    .add-patient-form {
+      display: grid;
+      gap: 1rem;
+      padding: 1.5rem;
+      border-radius: 24px;
+      background: var(--surface);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      margin-bottom: 1.5rem;
+    }
+
+    .add-patient-form h2 {
+      margin: 0 0 0.75rem;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-grid label {
+      display: grid;
+      gap: 0.5rem;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
     @media (max-width: 1100px) {
       .summary-grid,
       .grid-columns {
@@ -322,63 +388,83 @@ interface PatientProfile {
     }
   `]
 })
-export class PatientsComponent {
-  // Search query and filter state
+export class PatientsComponent implements OnInit {
   query = '';
   statusFilter = '';
+  showAddForm = false;
+  loading = true;
+  newPatient: Partial<PatientProfile> = {
+    name: '',
+    email: null,
+    phone: null,
+    location: null,
+    status: 'Actif'
+  };
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private patientService: PatientService) {}
 
-  // Compute filtered list based on query/status
+  async ngOnInit() {
+    await this.patientService.loadPatients();
+    this.loading = false;
+  }
+
+  get patients(): PatientProfile[] {
+    return this.patientService.patients();
+  }
+
   get filteredPatients(): PatientProfile[] {
     const q = this.query.trim().toLowerCase();
     return this.patients.filter(p => {
-      const matchesQuery = !q || p.name.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.assignedDoctor.toLowerCase().includes(q);
+      const location = p.location ? p.location.toLowerCase() : '';
+      const matchesQuery = !q || p.name.toLowerCase().includes(q) || location.includes(q) || p.assignedDoctor.toLowerCase().includes(q);
       const matchesStatus = !this.statusFilter || p.status === this.statusFilter;
       return matchesQuery && matchesStatus;
     });
   }
 
-  // Action: navigate to patient detail page
-  viewPatient(p: PatientProfile) {
-    this.router.navigate(['/patients', p.id]);
+  toggleAddPatient() {
+    this.showAddForm = !this.showAddForm;
+    if (!this.showAddForm) {
+      this.resetForm();
+    }
   }
 
-  // Action: navigate to booking page
-  bookPatient(p: PatientProfile) {
+  resetForm() {
+    this.newPatient = {
+      name: '',
+      email: null,
+      phone: null,
+      location: null,
+      status: 'Actif'
+    };
+  }
+
+  async addPatient() {
+    if (!this.newPatient.name) {
+      return;
+    }
+
+    await this.patientService.createPatient({
+      name: this.newPatient.name,
+      email: this.newPatient.email ?? null,
+      phone: this.newPatient.phone ?? null,
+      location: this.newPatient.location ?? null,
+      status: this.newPatient.status ?? 'Actif'
+    });
+
+    this.resetForm();
+    this.showAddForm = false;
+  }
+
+  viewPatient(patient: PatientProfile) {
+    this.router.navigate(['/patients', patient.id]);
+  }
+
+  bookPatient(patient: PatientProfile) {
     this.router.navigate(['/booking']);
   }
 
-  protected readonly patients: PatientProfile[] = [
-    {
-      id: 1,
-      name: 'Armand Sagna',
-      age: 48,
-      lastVisit: '10 mai 2026',
-      status: 'Actif',
-      location: 'Dakar',
-      assignedDoctor: 'Dr. Moustapha Diouf',
-      nextAppointment: '02 juin 2026'
-    },
-    {
-      id: 2,
-      name: 'Aloise Diop',
-      age: 35,
-      lastVisit: '12 mai 2026',
-      status: 'À vérifier',
-      location: 'Thies',
-      assignedDoctor: 'Dr. Jean Diouf',
-      nextAppointment: 'En attente'
-    },
-    {
-      id: 3,
-      name: 'Mariejeanne Coulibaly',
-      age: 29,
-      lastVisit: '08 mai 2026',
-      status: 'Actif',
-      location: 'Pout',
-      assignedDoctor: 'Dr. Marriane Fall',
-      nextAppointment: '16 juin 2026'
-    }
-  ];
+  async deletePatient(patient: PatientProfile) {
+    await this.patientService.deletePatient(patient.id);
+  }
 }

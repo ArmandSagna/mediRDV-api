@@ -52,6 +52,15 @@ class DatabaseSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Dr. Claire Dupuis',
+                'specialty' => 'Pédiatre',
+                'location' => 'Hôpital de l\'Enfance',
+                'rating' => 4.6,
+                'status' => 'available',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
         $patients = Patient::insert([
