@@ -29,6 +29,7 @@ class AppointmentConfirmed extends Notification
 
         return TwilioSmsMessage::create("Votre rendez-vous avec $doctorName est confirmé pour le $scheduledAt.")
             ->from(config('services.twilio.from'));
+            
     }
 
     public function toMail(object $notifiable): MailMessage

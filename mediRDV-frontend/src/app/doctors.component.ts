@@ -1,18 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-
-interface DoctorProfile {
-  id: number;
-  name: string;
-  specialty: string;
-  location: string;
-  rating: number;
-  nextAvailable: string;
-  experience: string;
-  patientsCount: number;
-}
+import { DoctorService, DoctorProfile } from './doctor.service';
 
 @Component({
   selector: 'app-doctors',
@@ -40,9 +30,42 @@ interface DoctorProfile {
           <span>{{ filteredDoctors.length }}</span>
           médecins affichés
         </div>
+        <button class="button accent" type="button" (click)="toggleAddDoctor()">
+          {{ showAddForm ? 'Annuler' : 'Nouveau médecin' }}
+        </button>
       </div>
 
-      <div class="doctor-grid">
+      <section class="add-doctor-form card" *ngIf="showAddForm">
+        <h2>Ajouter un nouveau médecin</h2>
+        <div class="form-grid">
+          <label>
+            Nom du médecin
+            <input type="text" [(ngModel)]="newDoctor.name" placeholder="Dr. Nom Prénom" />
+          </label>
+          <label>
+            Spécialité
+            <input type="text" [(ngModel)]="newDoctor.specialty" placeholder="Médecin Généraliste" />
+          </label>
+          <label>
+            Lieu
+            <input type="text" [(ngModel)]="newDoctor.location" placeholder="Clinique Habib Thiam" />
+          </label>
+          <label>
+            Expérience
+            <input type="text" [(ngModel)]="newDoctor.experience" placeholder="12 ans" />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="button accent" type="button" (click)="addDoctor()">Ajouter</button>
+          <button class="button outline" type="button" (click)="toggleAddDoctor()">Annuler</button>
+        </div>
+      </section>
+
+      <div class="empty-state" *ngIf="loading">
+        Chargement des médecins...
+      </div>
+
+      <div class="doctor-grid" *ngIf="!loading">
         <article class="doctor-card" *ngFor="let doctor of filteredDoctors">
           <div class="doctor-top">
             <div class="avatar">{{ initials(doctor.name) }}</div>
@@ -55,20 +78,16 @@ interface DoctorProfile {
 
           <div class="doctor-stats">
             <div>
-              <span>Note moyenne</span>
-              <strong>{{ doctor.rating.toFixed(1) }}/5</strong>
-            </div>
-            <div>
               <span>Expérience</span>
               <strong>{{ doctor.experience }}</strong>
+            </div>
+            <div>
+              <span>Prochain créneau</span>
+              <strong>{{ doctor.nextAvailable }}</strong>
             </div>
           </div>
 
           <div class="doctor-bottom">
-            <div>
-              <p>Prochain créneau</p>
-              <strong>{{ doctor.nextAvailable }}</strong>
-            </div>
             <div>
               <p>Patients suivis</p>
               <strong>{{ doctor.patientsCount }}</strong>
@@ -78,6 +97,7 @@ interface DoctorProfile {
           <footer class="card-actions">
             <button class="button outline" type="button" (click)="viewDoctor(doctor)">Voir</button>
             <button class="button accent" type="button" (click)="bookDoctor(doctor)">Prendre RDV</button>
+            <button class="button outline danger" type="button" (click)="deleteDoctor(doctor)">Supprimer</button>
           </footer>
         </article>
       </div>
@@ -266,6 +286,11 @@ interface DoctorProfile {
       border-color: rgba(148, 163, 184, 0.35);
     }
 
+    .button.danger {
+      border-color: rgba(248, 113, 113, 0.35);
+      color: #b91c1c;
+    }
+
     .button.accent {
       background: var(--primary);
       color: white;
@@ -278,6 +303,51 @@ interface DoctorProfile {
       background: rgba(148, 163, 184, 0.12);
       color: var(--subtext);
       text-align: center;
+    }
+
+    .add-doctor-form {
+      display: grid;
+      gap: 1rem;
+      padding: 1.5rem;
+      border-radius: 24px;
+      background: var(--surface);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      margin-bottom: 1.5rem;
+    }
+
+    .add-doctor-form h2 {
+      margin: 0 0 0.75rem;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .form-grid label {
+      display: grid;
+      gap: 0.5rem;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .form-grid input {
+      width: 100%;
+      padding: 0.95rem 1rem;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-wrap: wrap;
     }
 
     @media (max-width: 1100px) {
@@ -303,27 +373,80 @@ interface DoctorProfile {
     }
   `]
 })
-export class DoctorsComponent {
+export class DoctorsComponent implements OnInit {
   query = '';
   specialtyFilter = '';
+  showAddForm = false;
+  newDoctor: Partial<DoctorProfile> = {
+    name: '',
+    specialty: '',
+    location: '',
+    rating: 4.5,
+    experience: '',
+    patientsCount: 0
+  };
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private doctorService: DoctorService) {}
+
+  loading = true;
 
   get specialties(): string[] {
-    return Array.from(new Set(this.doctors.map(d => d.specialty)));
+    return this.doctorService.specialties;
   }
 
   get filteredDoctors(): DoctorProfile[] {
     const q = this.query.trim().toLowerCase();
-    return this.doctors.filter(d => {
+    return this.doctorService.doctors().filter(d => {
       const matchesQuery = !q || d.name.toLowerCase().includes(q) || d.specialty.toLowerCase().includes(q) || d.location.toLowerCase().includes(q);
       const matchesSpecialty = !this.specialtyFilter || d.specialty === this.specialtyFilter;
       return matchesQuery && matchesSpecialty;
     });
   }
 
+  async ngOnInit() {
+    await this.doctorService.loadDoctors();
+    this.loading = false;
+  }
+
   initials(name: string) {
     return name.split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  toggleAddDoctor() {
+    this.showAddForm = !this.showAddForm;
+    if (!this.showAddForm) {
+      this.resetForm();
+    }
+  }
+
+  resetForm() {
+    this.newDoctor = {
+      name: '',
+      specialty: '',
+      location: '',
+      rating: 4.5,
+      experience: '',
+      patientsCount: 0
+    };
+  }
+
+  async addDoctor() {
+    if (!this.newDoctor.name || !this.newDoctor.specialty || !this.newDoctor.location) {
+      return;
+    }
+
+    await this.doctorService.addDoctor({
+      name: this.newDoctor.name,
+      specialty: this.newDoctor.specialty,
+      location: this.newDoctor.location,
+      experience: this.newDoctor.experience || '0 ans'
+    });
+
+    this.toggleAddDoctor();
+  }
+
+  async deleteDoctor(doctor: DoctorProfile) {
+    await this.doctorService.deleteDoctor(doctor.id);
   }
 
   viewDoctor(d: DoctorProfile) {
@@ -333,37 +456,4 @@ export class DoctorsComponent {
   bookDoctor(d: DoctorProfile) {
     this.router.navigate(['/booking']);
   }
-
-  protected readonly doctors: DoctorProfile[] = [
-    {
-      id: 1,
-      name: 'Dr. Moustapha Diouf',
-      specialty: 'Médecin Généraliste',
-      location: 'Clinique Habib Thiam',
-      rating: 4.8,
-      nextAvailable: '26 mai • 10h30',
-      experience: '15 ans',
-      patientsCount: 860
-    },
-    {
-      id: 2,
-      name: 'Dr. Jean Diouf',
-      specialty: 'Dermatologue',
-      location: 'Centre Santé ',
-      rating: 4.9,
-      nextAvailable: '27 mai • 14h00',
-      experience: '12 ans',
-      patientsCount: 720
-    },
-    {
-      id: 3,
-      name: 'Dr. Marriane Fall',
-      specialty: 'Dentiste',
-      location: 'Hopital Principal de Dakar',
-      rating: 4.7,
-      nextAvailable: '26 mai • 09h00',
-      experience: '11 ans',
-      patientsCount: 540
-    }
-  ];
 }

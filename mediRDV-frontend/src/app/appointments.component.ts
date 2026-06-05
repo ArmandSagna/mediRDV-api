@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ApiService } from './api.service';
 
 // Représente une ligne de tableau pour un rendez-vous
 interface AppointmentRow {
@@ -28,7 +29,7 @@ interface AppointmentRow {
       <div class="card">
         <div class="card-header">
           <h2>Prochains rendez-vous</h2>
-          <span>15 mai 2026</span>
+          <span>{{ todayLabel }}</span>
         </div>
 
         <div class="table-list">
@@ -39,15 +40,23 @@ interface AppointmentRow {
             <div>Statut</div>
           </article>
 
-          <article class="table-row" *ngFor="let appointment of appointments">
-            <div>
-              <strong>{{ appointment.time }}</strong>
-              <p>{{ appointment.patient }}</p>
-            </div>
-            <div>{{ appointment.specialty }}</div>
-            <div>{{ appointment.doctor }}</div>
-            <span class="status-chip" [ngClass]="appointment.badge">{{ appointment.status }}</span>
-          </article>
+          <ng-container *ngIf="appointments().length > 0; else emptyState">
+            <article class="table-row" *ngFor="let appointment of appointments()">
+              <div>
+                <strong>{{ appointment.time }}</strong>
+                <p>{{ appointment.patient }}</p>
+              </div>
+              <div>{{ appointment.specialty }}</div>
+              <div>{{ appointment.doctor }}</div>
+              <span class="status-chip" [ngClass]="appointment.badge">{{ appointment.status }}</span>
+            </article>
+          </ng-container>
+
+          <ng-template #emptyState>
+            <article class="table-row empty-row">
+              <div colspan="4">Aucun rendez-vous disponible.</div>
+            </article>
+          </ng-template>
         </div>
       </div>
     </section>
@@ -113,6 +122,15 @@ interface AppointmentRow {
       font-size: 0.95rem;
     }
 
+    .table-row.empty-row {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      color: #64748b;
+      font-weight: 700;
+    }
+
     @media (max-width: 820px) {
       .table-row {
         grid-template-columns: 1fr;
@@ -122,39 +140,58 @@ interface AppointmentRow {
   `]
 })
 export class AppointmentsComponent {
-  // Liste des rendez-vous affichée sur la page de planning
-  protected readonly appointments: AppointmentRow[] = [
-    {
-      time: '08:30',
-      patient: 'Armand Sagna',
-      doctor: 'Dr. Ba',
-      specialty: 'Consultation générale',
-      status: 'Confirmé',
-      badge: 'success'
-    },
-    {
-      time: '09:15',
-      patient: 'Aloise Diop',
-      doctor: 'Dr. Diallo',
-      specialty: 'Cardiologie',
-      status: 'En attente',
-      badge: 'warning'
-    },
-    {
-      time: '10:00',
-      patient: 'Mariejeanne Coulibaly',
-      doctor: 'Dr. Fall',
-      specialty: 'Pédiatrie',
-      status: 'En cours',
-      badge: 'info'
-    },
-    {
-      time: '11:30',
-      patient: 'Sébastien Faye',
-      doctor: 'Dr. Martin',
-      specialty: 'Dermatologie',
-      status: 'Annulé',
-      badge: 'danger'
+  // Appel du service API pour récupérer les rendez-vous
+  private readonly api = inject(ApiService);
+
+  // Signal qui stocke la liste des rendez-vous depuis l'API
+  protected readonly appointments = signal<AppointmentRow[]>([]);
+
+  // Label pour afficher la date d'aujourd'hui
+  protected readonly todayLabel = new Date().toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  constructor() {
+    this.loadAppointments();
+  }
+
+  // Charge les rendez-vous depuis l'API dès l'initialisation
+  protected async loadAppointments() {
+    try {
+      const response = await this.api.getAppointments();
+
+      this.appointments.set(
+        response.data.map((appointment) => ({
+          time: appointment.scheduled_at.slice(11),
+          patient: appointment.patient,
+          doctor: appointment.doctor,
+          specialty: appointment.specialty ?? appointment.reason ?? 'Consultation',
+          status: appointment.status,
+          badge: this.statusBadge(appointment.status)
+        }))
+      );
+    } catch (error) {
+      // Si l'API ne répond pas, on garde une liste vide pour éviter les erreurs
+      this.appointments.set([]);
     }
-  ];
+  }
+
+  // Détermine la couleur du badge en fonction du statut
+  protected statusBadge(status: string): 'success' | 'warning' | 'info' | 'danger' {
+    if (status.toLowerCase().includes('confirm')) {
+      return 'success';
+    }
+
+    if (status.toLowerCase().includes('attente')) {
+      return 'warning';
+    }
+
+    if (status.toLowerCase().includes('en cours')) {
+      return 'info';
+    }
+
+    return 'danger';
+  }
 }

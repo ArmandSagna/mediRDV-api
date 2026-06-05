@@ -42,7 +42,6 @@ class DashboardController extends Controller
         if (Schema::hasTable('appointments')) {
             $appointmentsCount = DB::table('appointments')->count();
         }
-
         return response()->json([
             'success' => true,
             'data' => [
